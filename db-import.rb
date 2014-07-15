@@ -1,13 +1,5 @@
 #!/usr/bin/ruby
 
-=begin
-	TODO:
-		* polish resume process [ ]
-		* if different checksum see if can continue from the previous offset [ ]
-		* if same checksum and pos=size then consider the file processed [ ]
-		* have db in memory and save to disk on exit [ ]
-=end
-
 require 'sqlite3'
 require './Logfile.rb'
 
