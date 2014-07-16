@@ -20,7 +20,7 @@ ARGV.each_with_index do |option, i|
 		puts <<-EOF
 Usage: db-import [OPTION]...
   -v, --verbose\t\t\tEnable verbose output
-  -l [FILE], --log [FILE]\tSpecify log file
+  -l [FILE], --log [FILE]\tSpecify log file (must exist)
   -d [FILE], --db [FILE]\tSpecify database file
   -h, --help\t\t\tDisplay this message
 		EOF
@@ -60,24 +60,38 @@ begin
 		CREATE TABLE IF NOT EXISTS file_history (
 			revision_id INTEGER PRIMARY KEY,
 			checksum TEXT,
-			offset INTEGER
+			start_pos INTEGER,
+			end_pos INTEGER,
+			size INTEGER
 		);
 		SQL
 	db.execute_batch schema
 	
 	user_table = (db.execute "SELECT user_name FROM users").map {|e| e = e[0]}
 	channel_table = (db.execute "SELECT channel_name FROM channels").map {|e| e = e[0]}
-	checksums = (db.execute "SELECT checksum FROM file_history").map {|e| e = e[0]}
-	offsets = (db.execute "SELECT offset FROM file_history").map {|e| e = e[0]}
+	checksum_table = (db.execute "SELECT checksum FROM file_history").map {|e| e = e[0]}
+	start_pos_table = (db.execute "SELECT start_pos FROM file_history").map {|e| e = e[0]}
+	end_pos_table = (db.execute "SELECT end_pos FROM file_history").map {|e| e = e[0]}
+	size_table = (db.execute "SELECT size FROM file_history").map {|e| e = e[0]}
 	
-	file_history = Hash[checksums.zip(offsets)]
-
 	logfile = Logfile.new log_path
 
-	if file_history.include? logfile.checksum
-		logfile.seek(file_history[logfile.checksum], IO::SEEK_SET)
-	elsif not file_history.empty?
-		logfile.seek(file_history.values[-1], IO::SEEK_SET)
+	start_pos = 0
+	update_file_history = true
+
+	unless checksum_table.empty?
+		start_pos = end_pos_table[-1]
+		unless start_pos > logfile.size
+			logfile.seek(start_pos, IO::SEEK_SET)
+			if checksum_table[-1] == logfile.checksum
+				puts "Resuming..."
+			else
+				puts "Log file changed. Continuing from last imported line..."
+			end
+		else
+			update_file_history = false
+			raise "Resume position greater than log size. Is this an older log file?"
+		end
 	end
 
 	logfile.each_line do |line|
@@ -111,19 +125,19 @@ begin
 		
 		unless DBG
 			progress = (logfile.pos/logfile.size.to_f * 100).to_i
-			print "\rProccessed #{progress}%"
+			print "Proccessed #{progress}%\r"
 		end
 	end
+	puts "Log imported successfully."
 rescue Exception => e
-	puts "\nException occured"
-	puts e	
+	puts e
 ensure
-	if file_history.include? logfile.checksum
-		db.execute "UPDATE file_history SET offset=#{logfile.pos} WHERE checksum='#{logfile.checksum}'"
-	else
-		db.execute "INSERT INTO file_history VALUES(NULL,'#{logfile.checksum}',#{logfile.pos})"
+	if logfile
+		if update_file_history
+			puts "INSERT INTO file_history VALUES(NULL,'#{logfile.checksum}',#{start_pos},#{logfile.pos},#{logfile.size})" if DBG
+			db.execute "INSERT INTO file_history VALUES(NULL,'#{logfile.checksum}',#{start_pos},#{logfile.pos},#{logfile.size})"
+		end
+		logfile.close
 	end
 	db.close if db
-	logfile.close if logfile
-	puts
 end 	
