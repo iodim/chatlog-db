@@ -81,13 +81,16 @@ begin
 
 	unless checksum_table.empty?
 		start_pos = end_pos_table[-1]
-		unless start_pos > logfile.size
+		if start_pos < logfile.size
 			logfile.seek(start_pos, IO::SEEK_SET)
 			if checksum_table[-1] == logfile.checksum
 				puts "Resuming..."
 			else
 				puts "Log file changed. Continuing from last imported line..."
 			end
+		elsif start_pos == logfile.size
+			puts "Log already imported. Nothing to do."
+			logfile.seek(start_pos, IO::SEEK_SET)
 		else
 			update_file_history = false
 			raise "Resume position greater than log size. Is this an older log file?"
