@@ -5,8 +5,30 @@ require './Logfile.rb'
 
 DBG = false
 
+log_path = "chat.log"
+db_path = "chat.db"
+
+ARGV.each_with_index do |option, i|
+	case option
+	when "-v", "--verbose"
+		DBG = true
+	when "-l", "--log"
+		log_path = ARGV[i+1]
+	when "-d", "--db"
+		db_path = ARGV[i+1]
+	when "-h", "--help"
+		puts <<-EOF
+Usage: db-import [OPTION]...
+  -v, --verbose\t\t\tEnable verbose output
+  -l [FILE], --log [FILE]\tSpecify log file
+  -d [FILE], --db [FILE]\tSpecify database file
+  -h, --help\t\t\tDisplay this message
+		EOF
+	end
+end
+
 begin
-	db = SQLite3::Database.open "test.db"
+	db = SQLite3::Database.open db_path
 	schema = <<-SQL
 		PRAGMA foreign_keys = ON;
 		PRAGMA synchronous = OFF;
@@ -50,7 +72,7 @@ begin
 	
 	file_history = Hash[checksums.zip(offsets)]
 
-	logfile = Logfile.new "../murmur-logs/chat.log.new"
+	logfile = Logfile.new log_path
 
 	if file_history.include? logfile.checksum
 		logfile.seek(file_history[logfile.checksum], IO::SEEK_SET)
