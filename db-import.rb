@@ -70,9 +70,9 @@ begin
 	user_table = (db.execute "SELECT user_name FROM users").map {|e| e = e[0]}
 	channel_table = (db.execute "SELECT channel_name FROM channels").map {|e| e = e[0]}
 	checksum_table = (db.execute "SELECT checksum FROM file_history").map {|e| e = e[0]}
-	start_pos_table = (db.execute "SELECT start_pos FROM file_history").map {|e| e = e[0]}
+	#start_pos_table = (db.execute "SELECT start_pos FROM file_history").map {|e| e = e[0]}
 	end_pos_table = (db.execute "SELECT end_pos FROM file_history").map {|e| e = e[0]}
-	size_table = (db.execute "SELECT size FROM file_history").map {|e| e = e[0]}
+	#size_table = (db.execute "SELECT size FROM file_history").map {|e| e = e[0]}
 	
 	logfile = Logfile.new log_path
 
